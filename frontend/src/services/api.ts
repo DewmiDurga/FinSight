@@ -1,3 +1,5 @@
+import { supabase } from "../lib/supabase";
+
 const API_BASE_URL = "http://127.0.0.1:8000";
 
 export interface TransactionItem {
@@ -89,12 +91,28 @@ export interface AssistantReply {
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
+
+  // Retrieve current active session token from Supabase
+  let token: string | undefined;
+  try {
+    const { data } = await supabase.auth.getSession();
+    token = data.session?.access_token;
+  } catch {
+    // If Supabase session fetch fails, proceed without token
+  }
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...((options?.headers as Record<string, string>) || {}),
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(url, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options?.headers || {}),
-    },
+    headers,
   });
   if (!res.ok) {
     const errorBody = await res.text();

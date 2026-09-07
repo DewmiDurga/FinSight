@@ -163,13 +163,39 @@ def init_db():
 init_db()
 
 
-def clean_row_for_supabase(data: Dict[str, Any]) -> Dict[str, Any]:
+def clean_row_for_supabase(table: str, data: Dict[str, Any]) -> Dict[str, Any]:
     cleaned = {}
     for k, v in data.items():
         if isinstance(v, (datetime, date)):
             cleaned[k] = v.isoformat()
+        elif (v == "" or v == "No deadline") and any(substr in k for substr in ("date", "settlement", "deadline", "time")):
+            cleaned[k] = None
         else:
             cleaned[k] = v
+
+    # Ensure schema compatibility for Supabase Postgres constraints
+    if table == "budgets":
+        amt = cleaned.get("limit_amount") if cleaned.get("limit_amount") is not None else cleaned.get("amount")
+        if amt is not None:
+            cleaned["amount"] = float(amt)
+            cleaned["limit_amount"] = float(amt)
+        if not cleaned.get("period"):
+            cleaned["period"] = "monthly"
+        if not cleaned.get("start_date"):
+            cleaned["start_date"] = datetime.now().strftime("%Y-%m-01")
+        if not cleaned.get("end_date"):
+            cleaned["end_date"] = datetime.now().strftime("%Y-%m-30")
+
+    elif table == "goals":
+        target = cleaned.get("target") if cleaned.get("target") is not None else cleaned.get("target_amount")
+        if target is not None:
+            cleaned["target"] = float(target)
+            cleaned["target_amount"] = float(target)
+        saved = cleaned.get("saved") if cleaned.get("saved") is not None else cleaned.get("current_amount")
+        if saved is not None:
+            cleaned["saved"] = float(saved)
+            cleaned["current_amount"] = float(saved)
+
     return cleaned
 
 
@@ -183,10 +209,11 @@ class ResilientDB:
             if order_col:
                 query = query.order(order_col, desc=desc)
             res = query.execute()
-            if res.data and len(res.data) > 0:
+            if res.data is not None:
                 return res.data
-        except Exception:
-            pass
+        except Exception as e:
+            err_msg = str(e).encode("ascii", "backslashreplace").decode("ascii")
+            print(f"SUPABASE SELECT ERROR on {table} (falling back to SQLite): {err_msg}")
 
         # Fallback to SQLite
         conn = get_sqlite_conn()
@@ -199,29 +226,37 @@ class ResilientDB:
 
     @staticmethod
     def insert(table: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        data = clean_row_for_supabase(data)
-        if "id" not in data or not data["id"]:
+        data = clean_row_for_supabase(table, data)
+        # Ensure id is a valid UUID string
+        raw_id = data.get("id")
+        try:
+            if raw_id:
+                uuid.UUID(str(raw_id))
+                data["id"] = str(raw_id)
+            else:
+                data["id"] = str(uuid.uuid4())
+        except (ValueError, AttributeError):
             data["id"] = str(uuid.uuid4())
 
         try:
             res = supabase.table(table).insert(data).execute()
-
             if res.data and len(res.data) > 0:
                 return res.data[0]
-
-            raise Exception("Supabase insert returned no data")
-
         except Exception as e:
-            print(f"SUPABASE INSERT ERROR: {e}")
-            raise
+            err_msg = str(e).encode("ascii", "backslashreplace").decode("ascii")
+            print(f"SUPABASE INSERT ERROR on {table} (falling back to SQLite): {err_msg}")
 
         # Fallback to SQLite
         conn = get_sqlite_conn()
         cur = conn.cursor()
-        cols = list(data.keys())
+        cur.execute(f"PRAGMA table_info({table})")
+        sqlite_cols = {col[1] for col in cur.fetchall()}
+        filtered_data = {k: v for k, v in data.items() if k in sqlite_cols}
+
+        cols = list(filtered_data.keys())
         placeholders = ", ".join(["?"] * len(cols))
         col_names = ", ".join(cols)
-        values = [data[c] for c in cols]
+        values = [filtered_data[c] for c in cols]
         cur.execute(f"INSERT OR REPLACE INTO {table} ({col_names}) VALUES ({placeholders})", values)
         conn.commit()
         cur.execute(f"SELECT * FROM {table} WHERE id = ?", (data["id"],))
@@ -231,39 +266,47 @@ class ResilientDB:
 
     @staticmethod
     def update(table: str, item_id: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        data = clean_row_for_supabase(data)
+        data = clean_row_for_supabase(table, data)
+        str_id = str(item_id)
         # Try Supabase first
         try:
-            res = supabase.table(table).update(data).eq("id", item_id).execute()
+            res = supabase.table(table).update(data).eq("id", str_id).execute()
             if res.data and len(res.data) > 0:
                 return res.data[0]
-        except Exception:
-            pass
+        except Exception as e:
+            err_msg = str(e).encode("ascii", "backslashreplace").decode("ascii")
+            print(f"SUPABASE UPDATE ERROR on {table}: {err_msg}")
 
         # Fallback to SQLite
         conn = get_sqlite_conn()
         cur = conn.cursor()
-        set_clauses = ", ".join([f"{k} = ?" for k in data.keys()])
-        values = list(data.values()) + [item_id]
+        cur.execute(f"PRAGMA table_info({table})")
+        sqlite_cols = {col[1] for col in cur.fetchall()}
+        filtered_data = {k: v for k, v in data.items() if k in sqlite_cols}
+
+        set_clauses = ", ".join([f"{k} = ?" for k in filtered_data.keys()])
+        values = list(filtered_data.values()) + [str_id]
         cur.execute(f"UPDATE {table} SET {set_clauses} WHERE id = ?", values)
         conn.commit()
-        cur.execute(f"SELECT * FROM {table} WHERE id = ?", (item_id,))
+        cur.execute(f"SELECT * FROM {table} WHERE id = ?", (str_id,))
         row = cur.fetchone()
         conn.close()
         return dict(row) if row else None
 
     @staticmethod
     def delete(table: str, item_id: str) -> bool:
+        str_id = str(item_id)
         # Try Supabase first
         try:
-            supabase.table(table).delete().eq("id", item_id).execute()
-        except Exception:
-            pass
+            supabase.table(table).delete().eq("id", str_id).execute()
+        except Exception as e:
+            err_msg = str(e).encode("ascii", "backslashreplace").decode("ascii")
+            print(f"SUPABASE DELETE ERROR on {table}: {err_msg}")
 
         # Delete in SQLite
         conn = get_sqlite_conn()
         cur = conn.cursor()
-        cur.execute(f"DELETE FROM {table} WHERE id = ?", (item_id,))
+        cur.execute(f"DELETE FROM {table} WHERE id = ?", (str_id,))
         conn.commit()
         conn.close()
         return True
