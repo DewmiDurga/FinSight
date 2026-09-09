@@ -30,7 +30,7 @@ def create_goal(user_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
         "icon": data.get("icon", "🎯"),
         "color": data.get("color", "#6366f1"),
         "bg_color": data.get("bg_color", "#ede9fe"),
-        "deadline": data.get("deadline", "No deadline"),
+        "deadline": data.get("deadline") if data.get("deadline") and data.get("deadline") != "No deadline" else None,
     }
     created = ResilientDB.insert("goals", row)
     return {

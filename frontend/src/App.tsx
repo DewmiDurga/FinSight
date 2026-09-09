@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useAuth } from "./hooks/useAuth";
+import Auth from "./pages/Auth";
 import Sidebar from "./components/Sidebar";
 import type { Page } from "./components/Sidebar";
 import TopHeader from "./components/TopHeader";
@@ -20,7 +22,12 @@ const pageTitles: Record<Page, string> = {
   assistant: "AI Assistant",
 };
 
-function App() {
+interface MainAppProps {
+  userDisplayName: string;
+  onSignOut: () => void;
+}
+
+function MainApp({ userDisplayName, onSignOut }: MainAppProps) {
   const [page, setPage] = useState<Page>("dashboard");
 
   // Global Calendar selector state (defaults to today)
@@ -52,7 +59,12 @@ function App() {
 
   return (
     <div className="app-layout">
-      <Sidebar page={page} setPage={setPage} />
+      <Sidebar
+        page={page}
+        setPage={setPage}
+        userDisplayName={userDisplayName}
+        onSignOut={onSignOut}
+      />
 
       <div className="app-main">
         {/* Global interactive Calendar bar on every single page */}
@@ -70,6 +82,31 @@ function App() {
       </div>
     </div>
   );
+}
+
+function App() {
+  const { session, user, loading, signOut } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="app-loading">
+        <div className="app-loading-spinner" />
+        <p>Loading FinSight…</p>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <Auth />;
+  }
+
+  // Derive a display name: prefer full_name from metadata, fall back to email prefix
+  const userDisplayName =
+    (user?.user_metadata?.full_name as string | undefined) ||
+    user?.email?.split("@")[0] ||
+    "User";
+
+  return <MainApp userDisplayName={userDisplayName} onSignOut={signOut} />;
 }
 
 export default App;

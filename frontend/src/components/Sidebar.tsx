@@ -10,6 +10,8 @@ type Page =
 interface SidebarProps {
   page: Page;
   setPage: (page: Page) => void;
+  userDisplayName: string;
+  onSignOut: () => void;
 }
 
 const financeLinks: { label: string; id: Page; icon: string }[] = [
@@ -25,7 +27,7 @@ const toolLinks: { label: string; id: Page; icon: string }[] = [
   { label: "AI Assistant", id: "assistant",    icon: "🤖" },
 ];
 
-function Sidebar({ page, setPage }: SidebarProps) {
+function Sidebar({ page, setPage, userDisplayName, onSignOut }: SidebarProps) {
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
@@ -61,8 +63,25 @@ function Sidebar({ page, setPage }: SidebarProps) {
         ))}
       </nav>
 
-      <div className="sidebar-footer">
-        FinSight v1.0
+      {/* User info + logout */}
+      <div className="sidebar-user">
+        <div className="sidebar-user-info">
+          <div className="sidebar-avatar">
+            {userDisplayName.charAt(0).toUpperCase()}
+          </div>
+          <div className="sidebar-user-text">
+            <span className="sidebar-user-name">{userDisplayName}</span>
+            <span className="sidebar-user-role">Account</span>
+          </div>
+        </div>
+        <button
+          id="sidebar-logout-btn"
+          className="sidebar-logout-btn"
+          onClick={onSignOut}
+          title="Sign out"
+        >
+          ⏻
+        </button>
       </div>
     </aside>
   );
