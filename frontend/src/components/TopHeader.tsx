@@ -1,9 +1,21 @@
+import { useState } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Calendar as CalendarIcon,
+  CalendarDays,
+  Clock,
+} from "lucide-react";
+import { CalendarPopover } from "./CalendarPopover";
+
 interface TopHeaderProps {
   pageTitle: string;
   selectedDate: string;
   onDateChange: (date: string) => void;
   selectedMonth: string;
   onMonthChange: (month: string) => void;
+  onNavigateToCalendar?: () => void;
 }
 
 function formatDateDisplay(dateStr: string) {
@@ -38,24 +50,9 @@ function TopHeader({
   onDateChange,
   selectedMonth,
   onMonthChange,
+  onNavigateToCalendar,
 }: TopHeaderProps) {
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    onDateChange(val);
-    if (val) {
-      onMonthChange(val.slice(0, 7));
-    }
-  };
-
-  const handleMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    onMonthChange(val);
-    if (val) {
-      // Set to 1st of that month or retain day
-      const day = selectedDate ? selectedDate.slice(8) : "01";
-      onDateChange(`${val}-${day}`);
-    }
-  };
+  const [isPopoverOpen, setIsPopoverOpen] = useState<boolean>(false);
 
   const stepDate = (days: number) => {
     const base = selectedDate ? new Date(selectedDate + "T00:00:00") : new Date();
@@ -77,68 +74,101 @@ function TopHeader({
     onMonthChange(`${yyyy}-${mm}`);
   };
 
+  const todayStr = new Date().toISOString().split("T")[0];
+  const isToday = selectedDate === todayStr;
+
   return (
     <header className="top-header">
       <div className="top-header-left">
         <div className="top-header-page-title">
-          <span className="top-header-section-tag">Finance</span>
+          <span className="top-header-section-tag">Finance Command</span>
           <h2>{pageTitle}</h2>
         </div>
       </div>
 
-      <div className="calendar-bar">
-        {/* Navigation Arrows */}
-        <button
-          className="calendar-arrow-btn"
-          onClick={() => stepDate(-1)}
-          title="Previous day"
-        >
-          ◀
-        </button>
+      <div className="calendar-widget-container">
+        <div className="calendar-bar">
+          {/* Previous day stepper */}
+          <button
+            type="button"
+            className="calendar-arrow-btn"
+            onClick={() => stepDate(-1)}
+            title="Previous day"
+            aria-label="Previous day"
+          >
+            <ChevronLeft size={16} />
+          </button>
 
-        {/* Current Formatted Date & Badge */}
-        <div className="calendar-active-date">
-          <span className="calendar-icon">📅</span>
-          <div className="calendar-date-text">
-            <strong>{formatDateDisplay(selectedDate)}</strong>
-            <span className="calendar-month-sub">{formatMonthDisplay(selectedMonth)}</span>
-          </div>
+          {/* Interactive Date Trigger Button */}
+          <button
+            type="button"
+            className={`calendar-active-date-btn ${isPopoverOpen ? "active" : ""}`}
+            onClick={() => setIsPopoverOpen(!isPopoverOpen)}
+            title="Click to open interactive calendar"
+            aria-label="Open calendar"
+          >
+            <div className="calendar-icon-badge">
+              <CalendarIcon size={16} />
+            </div>
+            <div className="calendar-date-text">
+              <div className="calendar-date-row">
+                <strong>{formatDateDisplay(selectedDate)}</strong>
+                {isToday && <span className="calendar-today-badge">Today</span>}
+              </div>
+              <span className="calendar-month-sub">{formatMonthDisplay(selectedMonth)}</span>
+            </div>
+            <ChevronDown
+              size={14}
+              className={`calendar-chevron-icon ${isPopoverOpen ? "rotated" : ""}`}
+            />
+          </button>
+
+          {/* Next day stepper */}
+          <button
+            type="button"
+            className="calendar-arrow-btn"
+            onClick={() => stepDate(1)}
+            title="Next day"
+            aria-label="Next day"
+          >
+            <ChevronRight size={16} />
+          </button>
+
+          {/* Quick Today Shortcut */}
+          <button
+            type="button"
+            className={`btn btn-sm ${isToday ? "btn-outline" : "btn-primary"} calendar-today-btn`}
+            onClick={setToday}
+            title="Jump to today"
+          >
+            <Clock size={12} style={{ marginRight: 4 }} />
+            Today
+          </button>
+
+          {/* Full Calendar View Shortcut */}
+          {onNavigateToCalendar && (
+            <button
+              type="button"
+              className="calendar-fullview-btn"
+              onClick={onNavigateToCalendar}
+              title="Open full-screen financial calendar"
+            >
+              <CalendarDays size={15} />
+              <span>Full View</span>
+            </button>
+          )}
         </div>
 
-        {/* Date Finder Input */}
-        <div className="calendar-input-group" title="Select exact date">
-          <label className="calendar-label">Date:</label>
-          <input
-            type="date"
-            className="calendar-input"
-            value={selectedDate}
-            onChange={handleDateChange}
-          />
-        </div>
-
-        {/* Month Finder Input */}
-        <div className="calendar-input-group" title="Select month & year">
-          <label className="calendar-label">Month:</label>
-          <input
-            type="month"
-            className="calendar-input month"
-            value={selectedMonth}
-            onChange={handleMonthChange}
-          />
-        </div>
-
-        <button
-          className="calendar-arrow-btn"
-          onClick={() => stepDate(1)}
-          title="Next day"
-        >
-          ▶
-        </button>
-
-        {/* Quick Today Shortcut */}
-        <button className="btn btn-sm btn-ghost calendar-today-btn" onClick={setToday}>
-          Today
-        </button>
+        {/* Popover Dropdown */}
+        <CalendarPopover
+          selectedDate={selectedDate}
+          onDateChange={onDateChange}
+          selectedMonth={selectedMonth}
+          onMonthChange={onMonthChange}
+          isOpen={isPopoverOpen}
+          onClose={() => setIsPopoverOpen(false)}
+          onOpenCalendarView={onNavigateToCalendar}
+        />
       </div>
     </header>
   );

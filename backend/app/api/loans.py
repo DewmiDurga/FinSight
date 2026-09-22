@@ -7,6 +7,8 @@ from app.services.loan_service import (
     settle_loan,
     reset_loan_settlement,
     delete_loan,
+    calculate_amortization_schedule,
+    get_loan_amortization,
 )
 from app.auth import get_current_user_id
 
@@ -22,6 +24,29 @@ def list_loans(
     user_id: str = Depends(get_current_user_id),
 ):
     return get_loans(user_id, loan_direction=direction)
+
+
+@router.get("/calculator/amortization")
+def calculate_hypothetical_amortization(
+    principal: float = Query(..., description="Loan principal amount", gt=0),
+    rate: float = Query(..., description="Annual interest rate percentage", ge=0),
+    months: int = Query(12, description="Loan tenure in months", gt=0, le=360),
+):
+    """NumPy-powered loan amortization schedule calculator."""
+    return calculate_amortization_schedule(principal=principal, annual_rate_pct=rate, tenure_months=months)
+
+
+@router.get("/{loan_id}/amortization")
+def loan_amortization(
+    loan_id: str,
+    months: Optional[int] = Query(None, description="Optional tenure months override", gt=0, le=360),
+    user_id: str = Depends(get_current_user_id),
+):
+    """Retrieve full amortization schedule for an existing loan."""
+    schedule = get_loan_amortization(user_id, loan_id, tenure_months=months)
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Loan not found")
+    return schedule
 
 
 @router.post("/")

@@ -11,10 +11,12 @@ import Goals from "./pages/Goals";
 import Analytics from "./pages/Analytics";
 import Loans from "./pages/Loans";
 import Assistant from "./pages/Assistant";
+import CalendarPage from "./pages/CalendarPage";
 
 const pageTitles: Record<Page, string> = {
   dashboard: "Dashboard",
   transactions: "Transactions",
+  calendar: "Financial Calendar",
   budgets: "Budgets",
   goals: "Savings Goals",
   analytics: "Analytics & Breakdown",
@@ -44,6 +46,16 @@ function MainApp({ userDisplayName, onSignOut }: MainAppProps) {
         return <Dashboard selectedDate={selectedDate} selectedMonth={selectedMonth} />;
       case "transactions":
         return <Transactions selectedDate={selectedDate} selectedMonth={selectedMonth} />;
+      case "calendar":
+        return (
+          <CalendarPage
+            selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
+            selectedMonth={selectedMonth}
+            onMonthChange={setSelectedMonth}
+            onNavigateToTransactions={() => setPage("transactions")}
+          />
+        );
       case "budgets":
         return <Budgets />;
       case "goals":
@@ -74,6 +86,7 @@ function MainApp({ userDisplayName, onSignOut }: MainAppProps) {
           onDateChange={setSelectedDate}
           selectedMonth={selectedMonth}
           onMonthChange={setSelectedMonth}
+          onNavigateToCalendar={() => setPage("calendar")}
         />
 
         <div className="app-content-area">
