@@ -47,3 +47,9 @@ def root():
             "/assistant/chat",
         ],
     }
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
