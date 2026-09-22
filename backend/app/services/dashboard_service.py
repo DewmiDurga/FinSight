@@ -2,12 +2,21 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from app.services.transaction_service import get_transactions
 from app.services.budget_service import get_budgets
+from app.services.goal_service import get_goals
+
+
+def format_currency(val: float) -> str:
+    sign = "-" if val < 0 else ""
+    abs_val = abs(val)
+    if abs_val % 1 != 0:
+        return f"{sign}${abs_val:,.2f}"
+    return f"{sign}${int(abs_val):,}"
 
 
 def get_dashboard(user_id: str, month: Optional[str] = None) -> Dict[str, Any]:
     selected_month = month or datetime.now().strftime("%Y-%m")
     
-    # Format month display name (e.g. "September 2026")
+    # Format month display name
     try:
         parts = selected_month.split("-")
         year = int(parts[0])
@@ -15,54 +24,49 @@ def get_dashboard(user_id: str, month: Optional[str] = None) -> Dict[str, Any]:
         dt = datetime(year, mon, 1)
         month_display = dt.strftime("%B %Y")
     except Exception:
-        month_display = "September 2026"
+        month_display = datetime.now().strftime("%B %Y")
 
     all_txs = get_transactions(user_id)
-    month_txs = [t for t in all_txs if str(t.get("transaction_date", "")).startswith(selected_month)]
-    if not month_txs:
-        month_txs = all_txs
+    all_goals = get_goals(user_id)
 
-    # Calculate metrics
-    monthly_income = sum(t["amount"] for t in month_txs if t.get("type") == "income")
-    monthly_expenses = sum(t["amount"] for t in month_txs if t.get("type") == "expense")
-    
-    # Total balance from all transactions
-    total_income_all = sum(t["amount"] for t in all_txs if t.get("type") == "income")
-    total_expense_all = sum(t["amount"] for t in all_txs if t.get("type") == "expense")
-    base_balance = 5000.0  # initial base checking account balance
-    total_balance = base_balance + total_income_all - total_expense_all
-
-    savings = max(0.0, monthly_income - monthly_expenses)
-    savings_rate = round((savings / monthly_income * 100), 1) if monthly_income > 0 else 0.0
+    # Core dashboard calculations requested:
+    # expenses in dashboard = total expenses in transaction table
+    # income in dashboard = total income in transaction table
+    # saving = total saved in goals
+    # balance in dashboard = total income - total expenses + total saving
+    total_income = sum(float(t.get("amount") or 0.0) for t in all_txs if t.get("type") == "income")
+    total_expenses = sum(float(t.get("amount") or 0.0) for t in all_txs if t.get("type") == "expense")
+    total_saved = sum(float(g.get("saved") or 0.0) for g in all_goals)
+    total_balance = total_income - total_expenses + total_saved
 
     stats = [
         {
             "title": "Total Balance",
-            "value": f"${total_balance:,.2f}" if total_balance % 1 != 0 else f"${int(total_balance):,}",
+            "value": format_currency(total_balance),
             "icon": "🏦",
             "color": "blue",
-            "change": "↑ $320 from last month",
+            "change": "Income − Expenses + Savings",
         },
         {
             "title": "Monthly Income",
-            "value": f"${monthly_income:,.2f}" if monthly_income % 1 != 0 else f"${int(monthly_income):,}",
+            "value": format_currency(total_income),
             "icon": "💰",
             "color": "green",
-            "change": "Salary & Inflows",
+            "change": "Total Inflows",
         },
         {
             "title": "Monthly Expenses",
-            "value": f"${monthly_expenses:,.2f}" if monthly_expenses % 1 != 0 else f"${int(monthly_expenses):,}",
+            "value": format_currency(total_expenses),
             "icon": "💳",
             "color": "red",
-            "change": "Ledger Outflows",
+            "change": "Total Outflows",
         },
         {
             "title": "Savings",
-            "value": f"${savings:,.2f}" if savings % 1 != 0 else f"${int(savings):,}",
+            "value": format_currency(total_saved),
             "icon": "🎯",
             "color": "purple",
-            "change": f"{savings_rate}% savings rate",
+            "change": "Total Saved in Goals",
         },
     ]
 

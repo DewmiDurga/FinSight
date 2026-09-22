@@ -1,6 +1,7 @@
 type Page =
   | "dashboard"
   | "transactions"
+  | "calendar"
   | "budgets"
   | "goals"
   | "analytics"
@@ -17,6 +18,7 @@ interface SidebarProps {
 const financeLinks: { label: string; id: Page; icon: string }[] = [
   { label: "Dashboard",    id: "dashboard",    icon: "📊" },
   { label: "Transactions", id: "transactions", icon: "💳" },
+  { label: "Calendar",     id: "calendar",     icon: "🗓️" },
   { label: "Budgets",      id: "budgets",      icon: "🎯" },
   { label: "Goals",        id: "goals",        icon: "🏆" },
   { label: "Analytics",    id: "analytics",    icon: "📈" },

@@ -69,6 +69,51 @@ export interface AnalyticsOverview {
   }>;
 }
 
+export interface SpendingAnomaly {
+  id: string;
+  title: string;
+  category: string;
+  amount: number;
+  transaction_date: string;
+  z_score: number;
+  average_spend: number;
+}
+
+export interface SpendingForecast {
+  month: string;
+  days_in_month: number;
+  days_elapsed: number;
+  current_spend: number;
+  predicted_month_end_spend: number;
+  daily_average: number;
+}
+
+export interface SpendingInsights {
+  forecast: SpendingForecast;
+  anomalies: SpendingAnomaly[];
+}
+
+export interface AmortizationPeriod {
+  period: number;
+  payment: number;
+  principal_paid: number;
+  interest_paid: number;
+  remaining_balance: number;
+}
+
+export interface AmortizationSchedule {
+  principal: number;
+  annual_rate_pct: number;
+  tenure_months: number;
+  monthly_payment: number;
+  total_interest: number;
+  total_payment: number;
+  schedule: AmortizationPeriod[];
+  loan_id?: string;
+  person?: string;
+  loan_direction?: string;
+}
+
 export interface DashboardData {
   month_display: string;
   stats: Array<{
@@ -281,6 +326,20 @@ export const api = {
   async getAnalytics(month?: string): Promise<AnalyticsOverview> {
     const query = month ? `?month=${encodeURIComponent(month)}` : "";
     return request<AnalyticsOverview>(`/analytics/overview${query}`);
+  },
+
+  async getSpendingInsights(month?: string): Promise<SpendingInsights> {
+    const query = month ? `?month=${encodeURIComponent(month)}` : "";
+    return request<SpendingInsights>(`/analytics/insights${query}`);
+  },
+
+  async getLoanAmortization(loanId: string, months?: number): Promise<AmortizationSchedule> {
+    const query = months ? `?months=${months}` : "";
+    return request<AmortizationSchedule>(`/loans/${loanId}/amortization${query}`);
+  },
+
+  async calculateAmortization(principal: number, rate: number, months = 12): Promise<AmortizationSchedule> {
+    return request<AmortizationSchedule>(`/loans/calculator/amortization?principal=${principal}&rate=${rate}&months=${months}`);
   },
 
   // ── Assistant ──────────────────────────────────────────────

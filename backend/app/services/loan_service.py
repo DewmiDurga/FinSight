@@ -1,10 +1,94 @@
 from typing import Any, Dict, List, Optional
+import numpy as np
 from app.db import ResilientDB
 
 
 def calculate_total_due(principal: float, monthly_rate_pct: float) -> float:
     interest = (principal * (monthly_rate_pct or 0.0)) / 100.0
     return principal + interest
+
+
+def calculate_amortization_schedule(
+    principal: float,
+    annual_rate_pct: float,
+    tenure_months: int = 12,
+) -> Dict[str, Any]:
+    """Calculate monthly loan amortization schedule using NumPy vectorized formulas."""
+    tenure = max(1, int(tenure_months))
+    p = float(principal)
+    annual_r = float(annual_rate_pct or 0.0)
+
+    if annual_r <= 0.0:
+        monthly_payment = p / tenure
+        schedule = []
+        bal = p
+        for period in range(1, tenure + 1):
+            bal = max(0.0, bal - monthly_payment)
+            schedule.append({
+                "period": period,
+                "payment": round(float(monthly_payment), 2),
+                "principal_paid": round(float(monthly_payment), 2),
+                "interest_paid": 0.0,
+                "remaining_balance": round(float(bal), 2),
+            })
+        return {
+            "principal": round(p, 2),
+            "annual_rate_pct": 0.0,
+            "tenure_months": tenure,
+            "monthly_payment": round(float(monthly_payment), 2),
+            "total_interest": 0.0,
+            "total_payment": round(p, 2),
+            "schedule": schedule,
+        }
+
+    monthly_r = (annual_r / 100.0) / 12.0
+    # NumPy formula for EMI
+    factor = np.power(1.0 + monthly_r, tenure)
+    monthly_payment = p * (monthly_r * factor) / (factor - 1.0)
+
+    schedule = []
+    bal = p
+    total_interest = 0.0
+
+    for period in range(1, tenure + 1):
+        interest_payment = bal * monthly_r
+        principal_payment = monthly_payment - interest_payment
+        bal = max(0.0, bal - principal_payment)
+        total_interest += interest_payment
+        schedule.append({
+            "period": period,
+            "payment": round(float(monthly_payment), 2),
+            "principal_paid": round(float(principal_payment), 2),
+            "interest_paid": round(float(interest_payment), 2),
+            "remaining_balance": round(float(bal), 2),
+        })
+
+    return {
+        "principal": round(p, 2),
+        "annual_rate_pct": round(annual_r, 2),
+        "tenure_months": tenure,
+        "monthly_payment": round(float(monthly_payment), 2),
+        "total_interest": round(float(total_interest), 2),
+        "total_payment": round(float(p + total_interest), 2),
+        "schedule": schedule,
+    }
+
+
+def get_loan_amortization(user_id: str, loan_id: str, tenure_months: Optional[int] = None) -> Optional[Dict[str, Any]]:
+    loans = ResilientDB.select("loans", user_id)
+    target = next((l for l in loans if str(l.get("id")) == str(loan_id)), None)
+    if not target:
+        return None
+
+    principal = float(target.get("amount") or 0.0)
+    interest_rate = float(target.get("interest_rate") or 0.0)
+    months = tenure_months or 12
+
+    schedule_data = calculate_amortization_schedule(principal, interest_rate, months)
+    schedule_data["loan_id"] = str(loan_id)
+    schedule_data["person"] = target.get("person")
+    schedule_data["loan_direction"] = target.get("loan_direction")
+    return schedule_data
 
 
 def get_loans(user_id: str, loan_direction: Optional[str] = None) -> List[Dict[str, Any]]:

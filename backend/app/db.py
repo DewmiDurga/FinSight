@@ -139,22 +139,6 @@ def init_db():
             seed_goals,
         )
 
-    # Seed loans if empty
-    cur.execute("SELECT COUNT(*) FROM loans")
-    if cur.fetchone()[0] == 0:
-        seed_loans = [
-            (str(uuid.uuid4()), "00000000-0000-0000-0000-000000000000", "given", "Rahul", 2000.00, "Bank Transfer", "2026-08-01", "2026-09-15", "2026-10-01", 1.5, "Personal loan for travel", 0, 500.00),
-            (str(uuid.uuid4()), "00000000-0000-0000-0000-000000000000", "given", "Priya", 500.00, "Cash", "2026-08-20", "2026-09-05", "2026-09-20", 2.0, "Short-term help", 0, 0.00),
-            (str(uuid.uuid4()), "00000000-0000-0000-0000-000000000000", "given", "Kavinda", 1200.00, "Cash", "2026-08-25", "2026-09-25", "2026-11-25", 0.0, "Friend loan (no interest)", 0, 200.00),
-            (str(uuid.uuid4()), "00000000-0000-0000-0000-000000000000", "got", "Koko Finance", 5000.00, "Koko", "2026-07-15", "2026-09-15", "2026-12-15", 1.5, "Monthly installment via Koko", 0, 1500.00),
-            (str(uuid.uuid4()), "00000000-0000-0000-0000-000000000000", "got", "Ravi", 1500.00, "Cash", "2026-08-10", "2026-10-01", "2026-10-10", 0.0, "Cash loan from colleague", 0, 0.00),
-            (str(uuid.uuid4()), "00000000-0000-0000-0000-000000000000", "got", "Dialog Finance", 3000.00, "Instant Pay", "2026-06-01", "2026-09-01", "2026-12-01", 2.5, "Instant cash advance", 0, 750.00),
-        ]
-        cur.executemany(
-            "INSERT INTO loans (id, user_id, loan_direction, person, amount, type, date, next_settlement, return_date, interest_rate, notes, settled, settled_amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            seed_loans,
-        )
-
     conn.commit()
     conn.close()
 

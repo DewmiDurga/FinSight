@@ -74,19 +74,6 @@ function dueBadge(dateStr: string) {
   return <span className="badge badge-green">Due in {d}d</span>;
 }
 
-/* ─── Default data with partial settlement examples ─────── */
-const defaultGiven: GivenLoan[] = [
-  { id: 1, person: "Rahul",  amount: 2000, date: "2026-08-01", nextSettlement: "2026-09-15", returnDate: "2026-10-01", interestRate: 1.5, notes: "Personal loan for travel",  settled: false, settledAmount: 500 },
-  { id: 2, person: "Priya",  amount: 500,  date: "2026-08-20", nextSettlement: "2026-09-05", returnDate: "2026-09-20", interestRate: 2.0, notes: "Short-term help", settled: false, settledAmount: 0 },
-  { id: 3, person: "Kavinda", amount: 1200, date: "2026-08-25", nextSettlement: "2026-09-25", returnDate: "2026-11-25", interestRate: 0,   notes: "Friend loan (no interest)", settled: false, settledAmount: 200 },
-];
-
-const defaultGot: GotLoan[] = [
-  { id: 1, person: "Koko Finance",   amount: 5000, type: "Koko",         date: "2026-07-15", nextSettlement: "2026-09-15", returnDate: "2026-12-15", interestRate: 1.5, notes: "Monthly installment via Koko", settled: false, settledAmount: 1500 },
-  { id: 2, person: "Ravi",           amount: 1500, type: "Cash",         date: "2026-08-10", nextSettlement: "2026-10-01", returnDate: "2026-10-10", interestRate: 0,   notes: "Cash loan from colleague", settled: false, settledAmount: 0 },
-  { id: 3, person: "Dialog Finance", amount: 3000, type: "Instant Pay", date: "2026-06-01", nextSettlement: "2026-09-01", returnDate: "2026-12-01", interestRate: 2.5, notes: "Instant cash advance", settled: false, settledAmount: 750 },
-];
-
 /* ─── Empty form states ──────────────────────────────────── */
 const emptyGiven = { person: "", amount: "", date: "", nextSettlement: "", returnDate: "", interestRate: "", notes: "" };
 const emptyGot   = { person: "", amount: "", type: "Cash" as GotLoan["type"], date: "", nextSettlement: "", returnDate: "", interestRate: "", notes: "" };
@@ -148,13 +135,13 @@ function Loans({ selectedMonth }: LoansProps) {
             settledAmount: l.settled_amount,
           }));
 
-        setGivenLoans(given.length > 0 ? given : defaultGiven);
-        setGotLoans(got.length > 0 ? got : defaultGot);
+        setGivenLoans(given);
+        setGotLoans(got);
       })
       .catch((err) => {
         console.error("Failed to load loans:", err);
-        setGivenLoans(defaultGiven);
-        setGotLoans(defaultGot);
+        setGivenLoans([]);
+        setGotLoans([]);
       });
   };
 

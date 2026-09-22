@@ -38,7 +38,7 @@ function Dashboard({ selectedMonth }: DashboardProps) {
 
   const monthDisplay = data?.month_display || (selectedMonth
     ? new Date(Number(selectedMonth.split("-")[0]), Number(selectedMonth.split("-")[1]) - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" })
-    : "September 2026");
+    : new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" }));
 
   return (
     <main className="page-content">
@@ -62,10 +62,10 @@ function Dashboard({ selectedMonth }: DashboardProps) {
           />
         )) || (
           <>
-            <StatCard title="Total Balance" value="$8,960" icon="🏦" color="blue" change="Live sync" />
-            <StatCard title="Monthly Income" value="$3,500" icon="💰" color="green" change="Salary received" />
-            <StatCard title="Monthly Expenses" value="$123" icon="💳" color="red" change="Live outflows" />
-            <StatCard title="Savings" value="$3,377" icon="🎯" color="purple" change="Live rate" />
+            <StatCard title="Total Balance" value="$0.00" icon="🏦" color="blue" change="Calculated balance" />
+            <StatCard title="Monthly Income" value="$0.00" icon="💰" color="green" change="Total inflows" />
+            <StatCard title="Monthly Expenses" value="$0.00" icon="💳" color="red" change="Total outflows" />
+            <StatCard title="Savings" value="$0.00" icon="🎯" color="purple" change="Total saved" />
           </>
         )}
       </div>

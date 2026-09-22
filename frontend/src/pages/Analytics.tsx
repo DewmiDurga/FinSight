@@ -18,12 +18,14 @@ function Analytics() {
       });
   }, []);
 
-  const totalIncome = data?.monthly_income ?? 3500;
-  const totalExpense = data?.total_expenses ?? 1215;
+  const totalIncome = data?.monthly_income ?? 0;
+  const totalExpense = data?.total_expenses ?? 0;
   const savings = data?.net_savings ?? (totalIncome - totalExpense);
-  const savingsRate = data?.savings_rate ?? Math.round((savings / (totalIncome || 1)) * 100);
+  const savingsRate = data?.savings_rate ?? (totalIncome > 0 ? Math.round((savings / totalIncome) * 100) : 0);
   const breakdown = data?.breakdown ?? [];
   const monthly = data?.monthly_trends ?? [];
+
+  const maxVal = Math.max(1, ...monthly.map((m) => Math.max(m.income, m.expense, 100)));
 
   return (
     <main className="page-content">
@@ -69,24 +71,30 @@ function Analytics() {
           <div className="card-subtitle">Where your money goes (computed live)</div>
         </div>
         <div className="card-body">
-          {breakdown.map((item) => (
-            <div className="analytics-row" key={item.category}>
-              <div className="analytics-cat-label">
-                <div className="analytics-dot" style={{ background: item.color }} />
-                <span>{item.icon}</span>
-                {item.category}
-              </div>
-              <div>
-                <div className="progress-bar-bg">
-                  <div className="progress-bar-fill" style={{ width: `${item.percentage}%`, background: item.color }} />
+          {breakdown.length > 0 ? (
+            breakdown.map((item) => (
+              <div className="analytics-row" key={item.category}>
+                <div className="analytics-cat-label">
+                  <div className="analytics-dot" style={{ background: item.color }} />
+                  <span>{item.icon}</span>
+                  {item.category}
+                </div>
+                <div>
+                  <div className="progress-bar-bg">
+                    <div className="progress-bar-fill" style={{ width: `${item.percentage}%`, background: item.color }} />
+                  </div>
+                </div>
+                <div className="analytics-amount-col">
+                  ${item.amount}
+                  <div className="analytics-pct">{item.percentage}%</div>
                 </div>
               </div>
-              <div className="analytics-amount-col">
-                ${item.amount}
-                <div className="analytics-pct">{item.percentage}%</div>
-              </div>
+            ))
+          ) : (
+            <div className="empty-state" style={{ padding: "20px 0", textAlign: "center", color: "#94a3b8" }}>
+              <p>No expense transactions recorded</p>
             </div>
-          ))}
+          )}
         </div>
       </div>
 
@@ -99,7 +107,6 @@ function Analytics() {
         <div className="card-body">
           <div style={{ display: "flex", gap: "12px", alignItems: "flex-end", height: "140px" }}>
             {monthly.map((m) => {
-              const maxVal  = 4000;
               const incH    = Math.min(130, Math.round((m.income  / maxVal) * 120));
               const expH    = Math.min(130, Math.round((m.expense / maxVal) * 120));
               return (
